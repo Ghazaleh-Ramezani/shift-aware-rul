@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shift-aware-rul"
+version = "0.1.0"
+description = "Calibrated remaining-useful-life prediction under operating-condition shift"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Ghazaleh Ramezani"}]
+requires-python = ">=3.10"
+dependencies = ["numpy", "pandas", "scipy", "scikit-learn", "torch", "pyyaml", "matplotlib"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

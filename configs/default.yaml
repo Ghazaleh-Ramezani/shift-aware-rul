@@ -1,0 +1,24 @@
+# Full experiment: train on FD001 (one operating condition, one fault mode),
+# evaluate on all four subsets. FD002/FD004 add six operating conditions,
+# FD003/FD004 add a second fault mode.
+data_dir: data/CMAPSSData
+out_dir: results/default
+source: FD001
+targets: [FD001, FD002, FD003, FD004]
+adaptations: [none, adabn, condnorm, anchored, anchored+adabn]
+anchor_cycles: 20  # early-life cycles used by "anchored" normalization (shortest FD004 test engine has 19)
+cap: 125            # piecewise-linear RUL cap (cycles)
+window: 30          # input window length (cycles)
+alpha: 0.1          # 90% prediction intervals
+val_frac: 0.2       # fraction of source engines held out (calibration + early stopping)
+seeds: [0, 1, 2, 3, 4]
+ensemble_size: 5
+mc_passes: 30
+gp_n_max: 1000
+train:
+  epochs: 30
+  batch_size: 256
+  lr: 0.001
+  weight_decay: 1.0e-5
+  patience: 6
+  model_kwargs: {conv_channels: 32, lstm_hidden: 32, fusion_dim: 64, dropout: 0.2}

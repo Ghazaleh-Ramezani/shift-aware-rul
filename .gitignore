@@ -1,0 +1,11 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+*.pyc
+.ipynb_checkpoints/
+data/
+# keep only the merged three-seed results (text + figures) in the repo
+results/*
+!results/three_seeds/
+results/three_seeds/predictions.npz
+results/three_seeds/figures/*.png

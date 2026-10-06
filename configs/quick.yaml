@@ -1,0 +1,22 @@
+# Smoke run (~3 minutes on one CPU core). Not for claims: one seed, small ensemble.
+data_dir: data/CMAPSSData
+out_dir: results/quick
+source: FD001
+targets: [FD001, FD002, FD003, FD004]
+adaptations: [none, adabn, condnorm, anchored, anchored+adabn]
+anchor_cycles: 20  # early-life cycles used by "anchored" normalization (shortest FD004 test engine has 19)
+cap: 125
+window: 30
+alpha: 0.1
+val_frac: 0.2
+seeds: [0]
+ensemble_size: 3
+mc_passes: 20
+gp_n_max: 600
+train:
+  epochs: 12
+  batch_size: 256
+  lr: 0.001
+  weight_decay: 1.0e-5
+  patience: 4
+  model_kwargs: {conv_channels: 32, lstm_hidden: 32, fusion_dim: 64, dropout: 0.2}
