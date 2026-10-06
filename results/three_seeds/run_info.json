@@ -1,0 +1,55 @@
+{
+  "config": {
+    "data_dir": "data/CMAPSSData",
+    "out_dir": "results/three_seeds",
+    "source": "FD001",
+    "targets": [
+      "FD001",
+      "FD002",
+      "FD003",
+      "FD004"
+    ],
+    "adaptations": [
+      "none",
+      "adabn",
+      "condnorm",
+      "anchored",
+      "anchored+adabn"
+    ],
+    "anchor_cycles": 20,
+    "cap": 125,
+    "window": 30,
+    "alpha": 0.1,
+    "val_frac": 0.2,
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "ensemble_size": 3,
+    "mc_passes": 20,
+    "gp_n_max": 600,
+    "train": {
+      "epochs": 15,
+      "batch_size": 256,
+      "lr": 0.001,
+      "weight_decay": 1e-05,
+      "patience": 4,
+      "model_kwargs": {
+        "conv_channels": 32,
+        "lstm_hidden": 32,
+        "fusion_dim": 64,
+        "dropout": 0.2
+      }
+    }
+  },
+  "env": {
+    "python": "3.12.3",
+    "platform": "Linux-6.18.44-fc-v70-x86_64-with-glibc2.39",
+    "torch": "2.4.1+cu121",
+    "numpy": "2.4.4",
+    "pandas": "3.0.2",
+    "sklearn": "1.8.0",
+    "git_sha": null
+  }
+}
