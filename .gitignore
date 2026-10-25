@@ -4,8 +4,9 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 data/
-# keep only the merged three-seed results (text + figures) in the repo
+# keep the merged three-seed results (text + figures) and the anchor-protocol study
 results/*
 !results/three_seeds/
+!results/anchor_protocols/
 results/three_seeds/predictions.npz
 results/three_seeds/figures/*.png

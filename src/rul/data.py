@@ -67,11 +67,15 @@ class Normalizer:
     each cluster gets its own mean and standard deviation. Fitting this on
     unlabeled target data is a label-free adaptation that uses metadata.
 
-    With `anchor_cycles`, the statistics come only from each engine's first
-    `anchor_cycles` cycles, when every engine is still healthy. This removes the
+    With `anchor_cycles`, the statistics come only from the first
+    `anchor_cycles` cycles of every engine in the fitted data, pooled per
+    condition, when every engine is still healthy. This removes the
     operating-condition offset without also removing the degradation signal,
     which plain re-standardization does when the target population has a
     different mix of health states (e.g. truncated test trajectories).
+    Fitted on the target test set, this is transductive over the unlabeled
+    fleet, as AdaBN is; scripts/anchor_protocols.py tests early-cycle-only
+    clustering and statistics taken from other engines only.
     """
 
     def __init__(self, mode: str = "global", n_conditions: int = 1, seed: int = 0,
