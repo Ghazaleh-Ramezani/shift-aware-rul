@@ -10,7 +10,7 @@ A model trained on turbofan engines under one operating condition is deployed on
 
 1. **Without adaptation, intervals fail silently under shift.** Conformal 90% intervals calibrated on source engines cover only 28% (FD002) and 31% (FD004) of target engines, while RMSE rises from 14.5 to over 63 cycles.
 2. **Standard TTA is not free when there is no shift.** On the in-domain test set, AdaBN raises RMSE from 14.5 to 26.5 and per-condition re-standardization to 39.3. The cause is specific and general: C-MAPSS test trajectories are truncated, so the target population is dominated by healthy states, and re-standardizing on it removes the degradation signal itself.
-3. **Health-anchored normalization** (proposed here; statistics from each engine's first 20 cycles only, when every engine is healthy) separates operating-condition shift from health-state shift. It cuts FD002 RMSE from 66.4 to 22.6 with 90% conformal coverage restored (0.90), at a small but significant in-domain cost (+2.5 cycles, 95% CI [1.5, 3.4]).
+3. **Health-anchored normalization** (proposed here; per-condition statistics pooled over the first 20 cycles of the target engines, when every engine is still healthy) separates operating-condition shift from health-state shift. It cuts FD002 RMSE from 66.4 to 22.6 with 90% conformal coverage restored (0.90), at a small but significant in-domain cost (+2.5 cycles, 95% CI [1.5, 3.4]).
 4. **Different shifts need different adaptations.** A new fault mode (FD003) is helped by AdaBN (−15.8 cycles) and barely by anchored normalization (−2.4). When both shifts occur (FD004), anchored normalization alone and anchored + AdaBN perform similarly (−30.7 and −32.3 cycles; overlapping CIs).
 5. **Raw ensemble spread is far too narrow everywhere.** Gaussian intervals from the ensemble's standard deviation cover 5–38% at a nominal 90%, even in-domain; split-conformal rescaling on source data is what makes the intervals usable.
 
@@ -50,10 +50,37 @@ Full tables for all three UQ methods (MC dropout, deep ensemble, GP head), NASA 
 | `none` | nothing; source statistics | — |
 | `adabn` | all BatchNorm statistics re-estimated on target windows (Li et al., 2016) | unlabeled target sensors |
 | `condnorm` | sensors z-scored per operating condition (k-means on the settings) using all target data | unlabeled target sensors and settings |
-| `anchored` | as `condnorm`, but statistics come only from each engine's first 20 cycles | same, plus the fact that engines start healthy |
+| `anchored` | as `condnorm`, but statistics come only from the first 20 cycles of every target engine, pooled per condition | same, plus the fact that engines start healthy |
 | `anchored+adabn` | both | same |
 
+Every target adaptation is fitted on the unlabeled target test set as one batch — the standard test-time adaptation setting (transductive). Target RUL is never used, and conformal quantiles come from source engines only. How much anchored normalization depends on seeing the whole fleet is tested below.
+
 **Statistics.** Each adaptation is compared with `none` by a paired bootstrap over test engines (5,000 resamples); per-engine errors are first averaged across seeds.
+
+## Does anchoring need the whole fleet, and does the anchor length matter?
+
+`scripts/anchor_protocols.py` retrains the source models (three seeds) and evaluates them under three target protocols, and repeats this for anchor lengths 5–50 cycles. Full tables: [`results/anchor_protocols/summary.md`](results/anchor_protocols/summary.md). This retrain ran under newer library versions than `results/three_seeds` (recorded in `run_info.json`), so its absolute numbers differ slightly (FD002 22.85 vs 22.64); protocols are compared on the same trained models.
+
+| Protocol (anchor 20, ensemble) | What the target normalizer sees | FD002 RMSE | FD002 cov. | FD004 RMSE | FD004 cov. |
+|---|---|---|---|---|---|
+| transductive (main) | clusters from all target cycles; statistics from all engines' first 20 cycles | 22.85 ± 0.45 | 0.91 | 32.18 ± 2.64 | 0.91 |
+| early cycles only | clusters and statistics from cycles 1–20 only | 22.85 ± 0.45 | 0.91 | 32.18 ± 2.64 | 0.91 |
+| cross-fitted | each half of the fleet normalized with the other half's first 20 cycles | 23.02 ± 0.50 | 0.91 | 32.28 ± 2.63 | 0.91 |
+
+- Clustering on the first 20 cycles alone recovers the same operating regimes, so the results are identical.
+- Normalizing each engine only with *other* engines' early-life statistics costs 0.17 (FD002) and 0.10 (FD004) cycles of RMSE, with coverage unchanged: a new engine joining a fleet can be normalized with the statistics of engines already in service.
+
+| Anchor cycles (transductive) | 5 | 10 | 20 | 30 | 50 |
+|---|---|---|---|---|---|
+| FD002 RMSE | 22.89 | 22.98 | 22.85 | 22.87 | 22.79 |
+| FD004 RMSE | 32.47 | 31.27 | 32.18 | 31.89 | 31.75 |
+| FD002 / FD004 coverage | 0.91 / 0.90 | 0.92 / 0.95 | 0.91 / 0.91 | 0.91 / 0.89 | 0.91 / 0.92 |
+
+Across 5–50 cycles the result barely moves: the anchor estimates the operating-condition offset, which is large compared with the degradation accumulated in the first few dozen cycles.
+
+```bash
+python scripts/anchor_protocols.py --config configs/three_seeds.yaml --anchors 5 10 20 30 50 --out results/anchor_protocols   # ~10 min on 2 CPU cores
+```
 
 ## Quick start
 
@@ -85,7 +112,7 @@ src/rul/
   metrics.py     RMSE, NASA score, coverage, interval width, NLL, calibration curve
   stats.py       paired bootstrap over engines
   experiment.py  experiment driver, run merging, summary tables
-scripts/         run, merge, figures, data download
+scripts/         run, merge, figures, data download, anchor-protocol robustness
 configs/         quick, three_seeds, default
 tests/           synthetic C-MAPSS-format data; runs in CI on every push
 ```
@@ -96,7 +123,9 @@ Every run writes `raw.csv`, `predictions.npz`, `bootstrap.csv`, `summary.md`, an
 
 - **Small study.** Three seeds and 3-member ensembles trained for at most 15 epochs. The bootstrap intervals resample engines, not seeds, so seed-to-seed variance is reported separately (± std) rather than inside the confidence intervals.
 - **One source.** All transfers start from FD001. Reversing the direction (e.g. FD002 → FD001) is a natural next step.
-- **Anchor length is a choice.** The anchor (20 cycles) assumes that early-life cycles are healthy and that every test engine has at least that many cycles. The shortest FD004 test engine has 19, so its anchor uses all of its data. A sensitivity sweep over the anchor length is not yet included.
+- **Batch adaptation.** All target adaptations use the unlabeled target test set as one batch. For anchored normalization, early-cycle-only clustering and cross-fitting across halves of the fleet give the same results (above); a streaming version that updates the statistics as engines arrive is the natural next step.
+- **Anchor length.** The anchor assumes early-life cycles are healthy. Results are stable from 5 to 50 cycles (above); engines shorter than the anchor contribute all their cycles (the shortest FD004 test engine has 19).
+- **Strategy selection.** Each adaptation is label-free, but choosing between them here uses target results. Automatic selection from shift detection is the next step.
 - **Simulated engines.** C-MAPSS is simulated; real fleets add sensor faults, maintenance events, and censoring that are not modelled here.
 
 ## References

@@ -107,7 +107,8 @@ def run(cfg: dict, out_dir: str | Path, data_dir: str | Path, log=print) -> pd.D
                     feats = art["norm"].transform(tgt.test)  # source statistics, no adaptation
                 else:
                     # Per-condition statistics from unlabeled target sensors and settings;
-                    # "anchored" uses only each engine's early (healthy) cycles.
+                    # "anchored" uses only the early (healthy) cycles of the target
+                    # engines, pooled per condition. Target RUL is never used.
                     anchor = cfg["anchor_cycles"] if base == "anchored" else None
                     feats = Normalizer("condition", N_CONDITIONS[tname], seed, anchor).fit(tgt.test).transform(tgt.test)
                 x_last, y_last, _ = make_windows(feats, units_t, rul_t, win, last_only=True)
