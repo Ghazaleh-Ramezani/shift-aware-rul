@@ -8,5 +8,8 @@ data/
 results/*
 !results/three_seeds/
 !results/anchor_protocols/
+!results/serving/
+results/serving/model/
+model/
 results/three_seeds/predictions.npz
 results/three_seeds/figures/*.png
